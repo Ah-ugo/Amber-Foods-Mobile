@@ -1,8 +1,12 @@
+"use client";
+
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,15 +17,16 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
-import { apiService } from "../services/api";
 
 export default function EditProfileScreen() {
-  const { user } = useAuth();
+  const { user, token, updateUserData } = useAuth();
   const [formData, setFormData] = useState({
     full_name: "",
     phone: "",
     email: "",
   });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,11 +36,44 @@ export default function EditProfileScreen() {
         phone: user.phone || "",
         email: user.email || "",
       });
+      if (user.profile_image_url) {
+        setProfileImage(user.profile_image_url);
+      }
     }
   }, [user]);
 
   const updateFormData = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const pickImage = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert(
+          "Permission Required",
+          "You need to grant permission to access your photos"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setProfileImage(result.assets[0].uri);
+        setSelectedImage(result.assets[0]);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image");
+    }
   };
 
   const saveProfile = async () => {
@@ -46,15 +84,45 @@ export default function EditProfileScreen() {
 
     setLoading(true);
     try {
-      await apiService.updateProfile({
-        full_name: formData.full_name,
-        phone: formData.phone,
-      });
+      const formDataToSend = new FormData();
+      formDataToSend.append("full_name", formData.full_name);
+      formDataToSend.append("phone", formData.phone);
+
+      if (selectedImage) {
+        const fileExtension = selectedImage.uri.split(".").pop();
+        const fileName = `profile-image-${Date.now()}.${fileExtension}`;
+
+        formDataToSend.append("profile_image", {
+          uri: selectedImage.uri,
+          name: fileName,
+          type: `image/${fileExtension}`,
+        } as any);
+      }
+
+      const response = await fetch(
+        "https://amberfoods.onrender.com/api/users/me",
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+          body: formDataToSend,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      const updatedUser = await response.json();
+      updateUserData(updatedUser);
 
       Alert.alert("Success", "Profile updated successfully", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (error) {
+      console.error("Error updating profile:", error);
       Alert.alert("Error", "Failed to update profile. Please try again.");
     } finally {
       setLoading(false);
@@ -79,10 +147,17 @@ export default function EditProfileScreen() {
 
       <ScrollView style={styles.scrollView}>
         <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={40} color="#ffffff" />
-          </View>
-          <TouchableOpacity style={styles.changePhotoButton}>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={40} color="#ffffff" />
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.changePhotoButton}
+            onPress={pickImage}
+          >
             <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
         </View>
@@ -172,6 +247,12 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
+  },
+  avatarPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,

@@ -1,7 +1,9 @@
-import { apiService, type User } from "@/services/api";
-import * as SecureStore from "expo-secure-store";
+"use client";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
+import { apiService, type User } from "../services/api";
 
 interface AuthContextType {
   user: User | null;
@@ -15,6 +17,7 @@ interface AuthContextType {
   }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  updateUserData: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadStoredAuth = async () => {
     try {
-      const storedToken = await SecureStore.getItemAsync("auth_token");
+      const storedToken = await AsyncStorage.getItem("auth_token");
       if (storedToken) {
         setToken(storedToken);
         apiService.setToken(storedToken);
@@ -46,16 +49,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiService.login(email, password);
-      const { access_token } = response;
+      const formData = new FormData();
+      formData.append("username", email);
+      formData.append("password", password);
+      formData.append("grant_type", "password");
 
-      await SecureStore.setItemAsync("auth_token", access_token);
+      const response = await fetch(
+        "https://amberfoods.onrender.com/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            username: email,
+            password: password,
+            grant_type: "password",
+          }).toString(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
+
+      const data = await response.json();
+      const { access_token } = data;
+
+      await AsyncStorage.setItem("auth_token", access_token);
       setToken(access_token);
       apiService.setToken(access_token);
 
       const userProfile = await apiService.getProfile();
       setUser(userProfile);
     } catch (error) {
+      console.error("Login error:", error);
       throw error;
     }
   };
@@ -75,15 +103,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync("auth_token");
+    await AsyncStorage.removeItem("auth_token");
     setToken(null);
     setUser(null);
     apiService.setToken("");
   };
 
+  const updateUserData = (userData: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...userData });
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, logout, loading }}
+      value={{ user, token, login, register, logout, loading, updateUserData }}
     >
       {children}
     </AuthContext.Provider>

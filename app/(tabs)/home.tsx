@@ -3,6 +3,7 @@ import { apiService, type Category, type MenuItem } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
   FlatList,
@@ -68,7 +69,7 @@ export default function HomeScreen() {
         style={styles.featuredGradient}
       >
         <Text style={styles.featuredTitle}>{item.name}</Text>
-        <Text style={styles.featuredPrice}>${item.price.toFixed(2)}</Text>
+        <Text style={styles.featuredPrice}>₦{item.price.toFixed(2)}</Text>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -89,7 +90,7 @@ export default function HomeScreen() {
         <Text style={styles.bestSellingDescription} numberOfLines={2}>
           {item.description}
         </Text>
-        <Text style={styles.bestSellingPrice}>${item.price.toFixed(2)}</Text>
+        <Text style={styles.bestSellingPrice}>₦{item.price.toFixed(2)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -113,6 +114,7 @@ export default function HomeScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      <StatusBar style="light" backgroundColor="#000000" />
       {/* Header */}
       <LinearGradient colors={["#000000", "#333333"]} style={styles.header}>
         <View style={styles.headerContent}>
@@ -124,7 +126,10 @@ export default function HomeScreen() {
               What would you like to eat today?
             </Text>
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity
+            onPress={() => router.push("/notifications")}
+            style={styles.notificationButton}
+          >
             <Ionicons name="notifications-outline" size={24} color="#ffffff" />
           </TouchableOpacity>
         </View>

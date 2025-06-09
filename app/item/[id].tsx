@@ -1,3 +1,5 @@
+"use client";
+
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -11,10 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuth } from "../../contexts/AuthContext";
 import { apiService, type MenuItem } from "../../services/api";
 
 interface Review {
   _id: string;
+  user_id: string;
   user_name: string;
   rating: number;
   comment: string;
@@ -23,8 +27,10 @@ interface Review {
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
   const [item, setItem] = useState<MenuItem | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [userReview, setUserReview] = useState<Review | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -36,19 +42,32 @@ export default function ItemDetailScreen() {
 
   const loadItemData = async () => {
     try {
-      // Note: We'll need to add getMenuItem endpoint to our API service
-      const itemData = await fetch(
-        `https://amberfoods.onrender.com/api/menu/items/${id}`
-      );
-      const item = await itemData.json();
-      setItem(item);
+      // Get menu item
+      const itemData = await apiService.getMenuItem(id as string);
+      setItem(itemData);
 
       // Load reviews
-      const reviewsData = await fetch(
-        `https://amberfoods.onrender.com/api/reviews/items/${id}`
+      const reviewsResponse = await fetch(
+        `https://amberfoods.onrender.com/api/reviews/items/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiService.token}`,
+          },
+        }
       );
-      const reviews = await reviewsData.json();
-      setReviews(reviews);
+      const reviewsData = await reviewsResponse.json();
+
+      // Check if user has already reviewed this item
+      if (user) {
+        const userReviewData = reviewsData.find(
+          (review: Review) => review.user_id === user._id
+        );
+        if (userReviewData) {
+          setUserReview(userReviewData);
+        }
+      }
+
+      setReviews(reviewsData);
     } catch (error) {
       console.error("Error loading item data:", error);
     } finally {
@@ -67,6 +86,16 @@ export default function ItemDetailScreen() {
       ]);
     } catch (error) {
       Alert.alert("Error", "Failed to add item to cart");
+    }
+  };
+
+  const handleReviewAction = () => {
+    if (userReview) {
+      // Edit existing review
+      router.push(`/review/${id}?reviewId=${userReview._id}`);
+    } else {
+      // Add new review
+      router.push(`/review/${id}`);
     }
   };
 
@@ -125,7 +154,7 @@ export default function ItemDetailScreen() {
         {/* Item Info */}
         <View style={styles.itemInfo}>
           <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.itemPrice}>₦{item.price.toFixed(2)}</Text>
           <Text style={styles.itemDescription}>{item.description}</Text>
 
           {/* Quantity Selector */}
@@ -150,7 +179,20 @@ export default function ItemDetailScreen() {
 
           {/* Reviews Section */}
           <View style={styles.reviewsSection}>
-            <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.sectionTitle}>
+                Reviews ({reviews.length})
+              </Text>
+              <TouchableOpacity
+                style={styles.reviewButton}
+                onPress={handleReviewAction}
+              >
+                <Text style={styles.reviewButtonText}>
+                  {userReview ? "Edit Review" : "Add Review"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {reviews.length > 0 ? (
               <FlatList
                 data={reviews}
@@ -169,7 +211,7 @@ export default function ItemDetailScreen() {
       <View style={styles.footer}>
         <TouchableOpacity style={styles.addToCartButton} onPress={addToCart}>
           <Text style={styles.addToCartText}>
-            Add to Cart - ${(item.price * quantity).toFixed(2)}
+            Add to Cart - ₦{(item.price * quantity).toFixed(2)}
           </Text>
         </TouchableOpacity>
       </View>
@@ -263,11 +305,27 @@ const styles = StyleSheet.create({
   reviewsSection: {
     marginTop: 24,
   },
+  reviewsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   sectionTitle: {
     color: "#ffffff",
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 16,
+  },
+  reviewButton: {
+    backgroundColor: "#333333",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  reviewButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   reviewCard: {
     backgroundColor: "#1a1a1a",

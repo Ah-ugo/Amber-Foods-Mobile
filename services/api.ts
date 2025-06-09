@@ -89,7 +89,7 @@ export interface OrderItem {
 }
 
 class ApiService {
-  private token: string | null = null;
+  public token: string | null = null;
 
   setToken(token: string) {
     this.token = token;

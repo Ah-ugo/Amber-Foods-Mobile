@@ -132,7 +132,7 @@ export default function OrderDetailScreen() {
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
             </View>
-            <Text style={styles.itemPrice}>${item.subtotal.toFixed(2)}</Text>
+            <Text style={styles.itemPrice}>₦{item.subtotal.toFixed(2)}</Text>
           </View>
         ))}
       </View>
@@ -142,22 +142,22 @@ export default function OrderDetailScreen() {
         <Text style={styles.sectionTitle}>Order Summary</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Subtotal</Text>
-          <Text style={styles.summaryValue}>${order.subtotal.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₦{order.subtotal.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Delivery Fee</Text>
           <Text style={styles.summaryValue}>
-            ${order.delivery_fee.toFixed(2)}
+            ₦{order.delivery_fee.toFixed(2)}
           </Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Tax</Text>
-          <Text style={styles.summaryValue}>${order.tax.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₦{order.tax.toFixed(2)}</Text>
         </View>
         <View style={[styles.summaryRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>
-            ${order.total_amount.toFixed(2)}
+            ₦{order.total_amount.toFixed(2)}
           </Text>
         </View>
       </View>

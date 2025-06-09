@@ -1,7 +1,9 @@
+"use client";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,24 +41,41 @@ export default function ProfileScreen() {
       onPress: () => router.push("/addresses"),
     },
     {
+      icon: "star-outline",
+      title: "My Reviews",
+      onPress: () => router.push("/my-reviews"),
+    },
+    {
       icon: "card-outline",
       title: "Payment Methods",
-      onPress: () => {},
+      onPress: () =>
+        Alert.alert(
+          "Coming Soon",
+          "Payment methods management will be available soon!"
+        ),
     },
     {
       icon: "notifications-outline",
       title: "Notifications",
-      onPress: () => {},
+      onPress: () => router.push("/notifications"),
     },
     {
       icon: "help-circle-outline",
       title: "Help & Support",
-      onPress: () => {},
+      onPress: () =>
+        Alert.alert(
+          "Help & Support",
+          "Contact us at support@amberfoods.com or call +234-XXX-XXXX"
+        ),
     },
     {
       icon: "information-circle-outline",
       title: "About",
-      onPress: () => {},
+      onPress: () =>
+        Alert.alert(
+          "About Amber Foods",
+          "Version 1.0.0\n\nAmber Foods - Your favorite food delivery app"
+        ),
     },
   ];
 
@@ -64,9 +83,16 @@ export default function ProfileScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.profileInfo}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={40} color="#ffffff" />
-          </View>
+          {user?.profile_image_url ? (
+            <Image
+              source={{ uri: user.profile_image_url }}
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={40} color="#ffffff" />
+            </View>
+          )}
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
               {user?.full_name || "Guest User"}
@@ -119,6 +145,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 16,
+  },
+  avatarPlaceholder: {
     width: 80,
     height: 80,
     borderRadius: 40,

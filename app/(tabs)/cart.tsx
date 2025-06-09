@@ -108,7 +108,7 @@ export default function CartScreen() {
             />
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+              <Text style={styles.itemPrice}>₦{item.price.toFixed(2)}</Text>
               <View style={styles.quantityContainer}>
                 <TouchableOpacity
                   style={styles.quantityButton}
@@ -127,7 +127,7 @@ export default function CartScreen() {
             </View>
             <View style={styles.itemTotal}>
               <Text style={styles.itemTotalText}>
-                ${item.subtotal.toFixed(2)}
+                ₦{item.subtotal.toFixed(2)}
               </Text>
               <TouchableOpacity
                 style={styles.removeButton}
@@ -143,7 +143,7 @@ export default function CartScreen() {
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>${cart.total.toFixed(2)}</Text>
+          <Text style={styles.totalAmount}>₦{cart.total.toFixed(2)}</Text>
         </View>
         <TouchableOpacity
           style={styles.checkoutButton}

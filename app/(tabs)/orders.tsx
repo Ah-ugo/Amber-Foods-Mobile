@@ -176,7 +176,7 @@ export default function OrdersScreen() {
               {order.items.length} item{order.items.length > 1 ? "s" : ""}
             </Text>
             <Text style={styles.orderTotal}>
-              ${order.total_amount.toFixed(2)}
+              ₦{order.total_amount.toFixed(2)}
             </Text>
           </View>
 

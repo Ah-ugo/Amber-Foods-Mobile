@@ -1,3 +1,5 @@
+"use client";
+
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -10,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuth } from "../contexts/AuthContext";
 import { apiService, type Cart } from "../services/api";
 
 interface Address {
@@ -26,11 +29,13 @@ interface Address {
 }
 
 export default function CheckoutScreen() {
+  const { token } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadCheckoutData();
@@ -40,11 +45,7 @@ export default function CheckoutScreen() {
     try {
       const [cartData, addressesData] = await Promise.all([
         apiService.getCart(),
-        fetch("https://amberfoods.onrender.com/api/addresses/", {
-          headers: {
-            Authorization: `Bearer ${apiService.token}`,
-          },
-        }).then((res) => res.json()),
+        apiService.getAddresses(),
       ]);
 
       setCart(cartData);
@@ -56,6 +57,8 @@ export default function CheckoutScreen() {
       );
       if (defaultAddress) {
         setSelectedAddress(defaultAddress._id);
+      } else if (addressesData.length > 0) {
+        setSelectedAddress(addressesData[0]._id);
       }
     } catch (error) {
       console.error("Error loading checkout data:", error);
@@ -76,6 +79,9 @@ export default function CheckoutScreen() {
     }
 
     try {
+      setIsProcessing(true);
+
+      // Create order
       const orderData = {
         delivery_address_id: selectedAddress,
         special_instructions: specialInstructions,
@@ -90,21 +96,34 @@ export default function CheckoutScreen() {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${apiService.token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
-      const paymentUrl = await paymentResponse.text();
+      if (!paymentResponse.ok) {
+        throw new Error("Failed to initialize payment");
+      }
 
-      Alert.alert("Order Placed!", "Your order has been placed successfully", [
-        {
-          text: "View Order",
-          onPress: () => router.replace(`/order/${order._id}`),
-        },
-      ]);
+      const paymentData = await paymentResponse.json();
+
+      if (paymentData.success && paymentData.authorization_url) {
+        // Navigate to WebView with payment URL
+        router.push({
+          pathname: "/payment-webview",
+          params: {
+            paymentUrl: paymentData.authorization_url,
+            orderId: order._id,
+          },
+        });
+      } else {
+        throw new Error("Invalid payment response");
+      }
     } catch (error) {
+      console.error("Checkout error:", error);
       Alert.alert("Error", "Failed to place order. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -201,7 +220,7 @@ export default function CheckoutScreen() {
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
             </View>
-            <Text style={styles.itemPrice}>${item.subtotal.toFixed(2)}</Text>
+            <Text style={styles.itemPrice}>₦{item.subtotal.toFixed(2)}</Text>
           </View>
         ))}
       </View>
@@ -225,27 +244,36 @@ export default function CheckoutScreen() {
         <Text style={styles.sectionTitle}>Order Summary</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Subtotal</Text>
-          <Text style={styles.summaryValue}>${cart.total.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₦{cart.total.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Delivery Fee</Text>
-          <Text style={styles.summaryValue}>${deliveryFee.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₦{deliveryFee.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Tax</Text>
-          <Text style={styles.summaryValue}>${tax.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>₦{tax.toFixed(2)}</Text>
         </View>
         <View style={[styles.summaryRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>${totalAmount.toFixed(2)}</Text>
+          <Text style={styles.totalValue}>₦{totalAmount.toFixed(2)}</Text>
         </View>
       </View>
 
       {/* Place Order Button */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.placeOrderButton} onPress={placeOrder}>
+        <TouchableOpacity
+          style={[
+            styles.placeOrderButton,
+            isProcessing && styles.placeOrderButtonDisabled,
+          ]}
+          onPress={placeOrder}
+          disabled={isProcessing}
+        >
           <Text style={styles.placeOrderText}>
-            Place Order - ${totalAmount.toFixed(2)}
+            {isProcessing
+              ? "Processing..."
+              : `Place Order - ₦${totalAmount.toFixed(2)}`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -449,6 +477,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
+  },
+  placeOrderButtonDisabled: {
+    opacity: 0.6,
   },
   placeOrderText: {
     color: "#000000",

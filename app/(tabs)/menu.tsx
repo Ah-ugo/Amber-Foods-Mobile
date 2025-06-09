@@ -102,7 +102,7 @@ export default function MenuScreen() {
           {item.description}
         </Text>
         <View style={styles.menuItemFooter}>
-          <Text style={styles.menuItemPrice}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.menuItemPrice}>₦{item.price.toFixed(2)}</Text>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => addToCart(item)}
